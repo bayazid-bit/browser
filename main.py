@@ -13,7 +13,7 @@ from PyQt5.QtGui import QIcon
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import * 
-
+from PyQt5.QtWidgets import QInputDialog
 
 
 class Browser(QMainWindow):
@@ -34,6 +34,11 @@ class Browser(QMainWindow):
 
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
+        self.tabs.setStyleSheet(
+            """
+            border-radius:20px ; 
+            """
+        )
         self.tabs.tabBarDoubleClicked.connect(self.tab_open_doubleclick)
         self.tabs.currentChanged.connect(self.current_tab_changed)
         self.tabs.setTabsClosable(True)
@@ -44,15 +49,16 @@ class Browser(QMainWindow):
         self.addToolBar(navbar)
         navbar.setStyleSheet(
             """
-            QToolBar{
-            padding: 10px ; 
-            }"""
+            QToolBar {
+            padding:10px ; 
+            }
+            """
         )
 
         # Add toolbar buttons and actions (Back, Forward, Reload, etc.)
         self.add_toolbar_buttons(navbar)
 
-        self.add_new_tab(QUrl('https://www.google.com'), 'Homepage')
+        self.add_new_tab(QUrl('https://www.google.com'), 'Home')
 
         self.status = QStatusBar()
         self.setStatusBar(self.status)
@@ -81,17 +87,19 @@ class Browser(QMainWindow):
             QLineEdit {
                 background-color: lightgray;  /* Light gray input fields */
                 color: black;  /* Black text */
-                border: 1px solid gray;  /* Light gray border */
+                border: 1px solid gray; 
+                border-radius: 50%;  /* Light gray border */
             }
             QTabWidget::pane {
                 background-color: lightgray;  /* Light gray tab pane */
-                border: 1px solid gray;  /* Light gray border for tabs */
+                border: 2px solid gray;  /* Light gray border for tabs */
             }
             QTabBar::tab {
                 background-color: lightgray;  /* Light gray background for tabs */
                 color: black;
                 padding: 10px;
-                border-radius: 15px;
+                border-top-left-radius: 10px;
+                border-top-right-radius: 20px;
                 height: 15px;
                 margin-right: 5px;
                 transition: background-color 0.3s, color 0.3s;  /* Smooth transitions */
@@ -225,7 +233,7 @@ class Browser(QMainWindow):
             {
                 border-radius:50%;
                 padding: 13px 10px ;
-                color: darkgray ; 
+                color: gray ; 
                 
             }
 
@@ -296,12 +304,18 @@ class Browser(QMainWindow):
 
     def show_history(self):
         """ Show browser history in a visually improved window """
-        history_dialog = QDialog(self)
-        history_dialog.setWindowTitle("History")
-        history_dialog.setWindowIcon(QIcon("data/history.png"))
-        history_layout = QVBoxLayout()
-        history_list = QListWidget()
+        self.history_dialog = QDialog(self)
+        self.history_dialog.setWindowTitle("History")
+        self.history_dialog.setWindowIcon(QIcon("data/history.png"))
+        self.history_dialog.resize(800, 600)  # নির্দিষ্ট উইন্ডো সাইজ সেট
 
+        # Layout and Style
+        history_layout = QVBoxLayout()
+        self.history_dialog.setStyleSheet("background-color: #ffffff; border-radius: 10px;")
+
+        # History List
+        history_list = QListWidget()
+        history_list.setStyleSheet("padding: 10px; font-size: 14px;")
         for url in self.history:
             item = QListWidgetItem(url)
             item.setIcon(QIcon("data/history.png"))  
@@ -309,32 +323,51 @@ class Browser(QMainWindow):
 
         history_list.clicked.connect(self.visit_history)
 
+        # Buttons Layout
+        button_layout = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        ok_button.setStyleSheet("padding: 8px; font-size: 14px; background-color:rgb(120, 110, 110); color: white;")
+        ok_button.clicked.connect(self.history_dialog.accept)
+
+        cancel_button = QPushButton("Cancel")
+        cancel_button.setStyleSheet("padding: 8px; font-size: 14px; background-color: rgba(115, 109, 109, 0.4); color: white;")
+        cancel_button.clicked.connect(self.history_dialog.reject)
+
+        button_layout.addWidget(ok_button)
+        button_layout.addWidget(cancel_button)
+
+        # Adding Widgets to Layout
         history_layout.addWidget(history_list)
-        history_dialog.setLayout(history_layout)
-        history_dialog.exec_()
+        history_layout.addLayout(button_layout)
+        self.history_dialog.setLayout(history_layout)
+
+        self.history_dialog.exec_()
 
     def show_bookmarks(self):
-        """ Show bookmarks in a visually enhanced window """
-        bookmarks_dialog = QDialog(self)
-        bookmarks_dialog.setWindowTitle("Bookmarks")
-        bookmarks_dialog.setWindowIcon(QIcon("data/bookmark1.png"))
-        bookmarks_dialog.setStyleSheet("background-color: #f0f0f0; border-radius: 10px;")  # Dialog styling
+        """ Show bookmarks in a visually enhanced window with Add and Close buttons """
+        self.bookmarks_dialog = QDialog(self)
+        self.bookmarks_dialog.setWindowTitle("Bookmarks")
+        self.bookmarks_dialog.setWindowIcon(QIcon("data/bookmark1.png"))
+        self.bookmarks_dialog.resize(800, 600)
+        self.bookmarks_dialog.setStyleSheet("background-color: #f8f9fa; border-radius: 10px;")
 
-        # Layout and list
+        # Layout
         bookmarks_layout = QVBoxLayout()
-        bookmarks_list = QListWidget()
-        bookmarks_list.setStyleSheet("border: none;")  
 
-        # Font customization
+        # Search Bar
+        search_bar = QLineEdit()
+        search_bar.setPlaceholderText("Search bookmarks...")
+        search_bar.setStyleSheet(
+            "padding: 8px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; margin-bottom: 10px;"
+        )
+
+        # Bookmarks List
+        bookmarks_list = QListWidget()
+        bookmarks_list.setStyleSheet("font-size: 14px; padding: 10px; background-color: #ffffff;")
         font = QFont("Arial", 12)
         bookmarks_list.setFont(font)
 
-        # Search bar for filtering bookmarks
-        search_bar = QLineEdit()
-        search_bar.setPlaceholderText("Search bookmarks...")
-        search_bar.setStyleSheet("padding: 5px; margin-bottom: 10px; font-size: 12px; border-radius: 5px;")
-
-        # Add search functionality
+        # Search Functionality
         def filter_bookmarks():
             search_text = search_bar.text().lower()
             for i in range(bookmarks_list.count()):
@@ -343,32 +376,168 @@ class Browser(QMainWindow):
 
         search_bar.textChanged.connect(filter_bookmarks)
 
-        # Add items to the list
+        # Adding Bookmarks
         for bookmark in self.bookmarks:
             item = QListWidgetItem(bookmark)
             item.setIcon(QIcon("data/bookmark1.png"))  
-            item.setTextAlignment(Qt.AlignLeft)
             bookmarks_list.addItem(item)
 
         bookmarks_list.clicked.connect(self.visit_bookmark)
 
-        # Add widgets to layout
+        # Buttons Layout
+        button_layout = QHBoxLayout()
+        
+        # Add Bookmark Button
+        add_button = QPushButton("Add Bookmark")
+        add_button.setStyleSheet(
+        """
+        QPushButton {
+            padding: 8px 15px; 
+            font-size: 14px; 
+            background-color: #e0e0e0; 
+            border: 1px solid #ccc; 
+            border-radius: 5px;
+        }
+        QPushButton:hover {
+            background-color: #d6d6d6;
+        }
+        QPushButton:pressed {
+            background-color: #bfbfbf;
+        }
+        """
+        )
+
+        add_button.clicked.connect(lambda: self.add_bookmark_action(bookmarks_list))
+        button_layout.addWidget(add_button)
+
+        # Close Button
+        close_button = QPushButton("Close")
+        close_button.setStyleSheet(
+        """
+        QPushButton {
+            padding: 8px 15px; 
+            font-size: 14px; 
+            background-color: #f0f0f0; 
+            border: 1px solid #ccc; 
+            border-radius: 5px;
+        }
+        QPushButton:hover {
+            background-color: #e6e6e6;
+        }
+        QPushButton:pressed {
+            background-color: #cccccc;
+        }
+        """
+        )
+        close_button.clicked.connect(self.bookmarks_dialog.reject)
+        button_layout.addWidget(close_button)
+
+        # Adding Widgets to Layout
         bookmarks_layout.addWidget(search_bar)
         bookmarks_layout.addWidget(bookmarks_list)
+        bookmarks_layout.addLayout(button_layout)
 
-        bookmarks_dialog.setLayout(bookmarks_layout)
-        bookmarks_dialog.exec_()
+        self.bookmarks_dialog.setLayout(bookmarks_layout)
+        self.bookmarks_dialog.exec_()
 
+
+    def add_bookmark_action(self, bookmarks_list):
+        """ Open a custom dialog for adding a bookmark """
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add Bookmark")
+        dialog.setWindowIcon(QIcon("data/bookmark1.png"))
+        dialog.resize(400, 200)
+        dialog.setStyleSheet(
+            """
+            QDialog {
+                background-color: #f8f9fa; 
+                border-radius: 10px; 
+                padding: 20px;
+            }
+            QLabel {
+                font-size: 14px; 
+                color: #333; 
+                margin-bottom: 10px;
+            }
+            QLineEdit {
+                font-size: 14px; 
+                padding: 8px; 
+                border: 1px solid #ccc; 
+                border-radius: 5px; 
+                background-color: #ffffff;
+            }
+            QPushButton {
+                font-size: 14px; 
+                padding: 8px 15px; 
+                background-color: #e0e0e0; 
+                border: 1px solid #bbb; 
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #d6d6d6;
+            }
+            QPushButton:pressed {
+                background-color: #cccccc;
+            }
+            """
+        )
+
+        # Layout for dialog
+        layout = QVBoxLayout()
+
+        # Label for input prompt
+        label = QLabel("Enter the URL for the bookmark:")
+        layout.addWidget(label)
+
+        # Input field for URL
+        url_input = QLineEdit()
+        url_input.setPlaceholderText("https://example.com")
+        layout.addWidget(url_input)
+
+        # Buttons layout
+        button_layout = QHBoxLayout()
+
+        # Add button
+        add_button = QPushButton("Add")
+        add_button.clicked.connect(lambda: self.add_bookmark_to_list(dialog, url_input, bookmarks_list))
+        button_layout.addWidget(add_button)
+
+        # Cancel button
+        cancel_button = QPushButton("Cancel")
+        cancel_button.clicked.connect(dialog.reject)
+        button_layout.addWidget(cancel_button)
+
+        # Add layouts to dialog
+        layout.addLayout(button_layout)
+        dialog.setLayout(layout)
+        dialog.exec_()
+
+    def add_bookmark_to_list(self, dialog, url_input, bookmarks_list):
+        """ Add the bookmark to the list and close the dialog """
+        new_bookmark = url_input.text().strip()
+        if new_bookmark:
+            # Add to internal bookmarks list
+            self.bookmarks.append(new_bookmark)  # Make sure self.bookmarks is initialized
+
+            # Add to QListWidget
+            item = QListWidgetItem(new_bookmark)
+            item.setIcon(QIcon("data/bookmark1.png"))
+            bookmarks_list.addItem(item)
+
+            # Close dialog
+            dialog.accept()
 
     def visit_history(self, index):
         """ Visit a URL from history """
         url = self.history[index.row()]
         self.add_new_tab(QUrl(url))
+        self.history_dialog.accept()
 
     def visit_bookmark(self, index):
         """ Visit a bookmark """
         url = self.bookmarks[index.row()]
         self.add_new_tab(QUrl(url))
+        self.bookmarks_dialog.accept() 
 
     def save_history(self):
         """ Save history to file """
@@ -442,9 +611,6 @@ class Browser(QMainWindow):
         e.setWindowIcon(QIcon("data/main_icon.png"))
         e.exec_()
         
-        
-
-    
 
     def about_me(self):
 
