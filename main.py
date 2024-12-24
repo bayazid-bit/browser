@@ -1,5 +1,8 @@
 import sys
 import json
+import requests
+import tempfile
+from threading import Thread 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QIcon, QCursor ,QPixmap , QPainter, QBrush
 from PyQt5.QtWidgets import *
@@ -92,11 +95,12 @@ class Browser(QMainWindow):
             }
             QTabWidget::pane {
                 background-color: lightgray;  /* Light gray tab pane */
-                border: 2px solid gray;  /* Light gray border for tabs */
+                border: 4px solid gray;  /* Light gray border for tabs */
             }
             QTabBar::tab {
                 background-color: lightgray;  /* Light gray background for tabs */
                 color: black;
+                max-width:200px;
                 padding: 10px;
                 border-top-left-radius: 10px;
                 border-top-right-radius: 20px;
@@ -177,7 +181,7 @@ class Browser(QMainWindow):
         navbar.addAction(new_tab_button)
 
         # "More" menu button
-        more_button = QAction('...', self)
+        more_button = QAction('More', self)
         more_button.setIcon(QIcon("data/menu_icon.png"))
         more_button.triggered.connect(self.show_more_menu)
         navbar.addAction(more_button)
@@ -215,14 +219,49 @@ class Browser(QMainWindow):
         self.save_history()
 
         i = self.tabs.addTab(browser, label)
-        self.tabs.setCurrentIndex(i)
 
         browser.urlChanged.connect(lambda qurl, browser=browser: self.update_urlbar(qurl, browser))
-        browser.loadFinished.connect(lambda _, i=i, browser=browser: self.tabs.setTabText(i, browser.page().title()))
+        self.tabs.setCurrentIndex(i)
 
+        browser.loadFinished.connect(lambda _, i=i, browser=browser:self.update_tab_head( i , browser) )
         browser.loadStarted.connect(lambda: self.update_loading_status("Loading..."))
         browser.loadFinished.connect(lambda: self.update_loading_status("Completed"))
         browser.loadProgress.connect(self.update_loading_percentage)
+
+    def update_tab_head(self, i , browser):
+        self.tabs.setTabText(i, browser.page().title())
+        self.set_favicon(i , browser) 
+        
+        
+        
+        
+    def set_favicon(self,i , browser):
+        url = browser.url().toString()
+        print(url)
+        path = self.download_ico(url+"/favicon.ico")
+        if not path :
+            favicon_file = QIcon("./data/default_fav.png")
+        else :
+            favicon_file = QIcon(path )
+        self.tabs.setTabIcon(i , favicon_file)
+        
+
+    def download_ico(self , url):
+        try:
+            # Send a GET request to download the .ico file
+            response = requests.get(url)
+            response.raise_for_status()  # Check if the request was successful
+            
+            # Create a temporary file
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".ico") as temp_file:
+                temp_file.write(response.content)  # Write the .ico file content to the temporary file
+                temp_path = temp_file.name  # Get the temporary file's path
+            
+            print(f".ico file downloaded to temporary location: {temp_path}")
+            return temp_path
+        except Exception as e:
+            print(f"Error downloading .ico file: {e}")
+            return None
 
     def show_more_menu(self):
         """ Show options menu when "..." button is clicked """
@@ -231,11 +270,13 @@ class Browser(QMainWindow):
             """
             QMenu
             {
-                border-radius:50%;
-                padding: 13px 10px ;
-                color: gray ; 
+                border: 1 solid black ;
+                background-color: lightgray ;
+                padding: 20px 10px ;
+                border-radius: 15px;
                 
             }
+            
 
             QMenu:item{
             padding: 10px ;
@@ -316,7 +357,7 @@ class Browser(QMainWindow):
         # History List
         history_list = QListWidget()
         history_list.setStyleSheet("padding: 10px; font-size: 14px;")
-        for url in self.history:
+        for url in self.history[::-1]:
             item = QListWidgetItem(url)
             item.setIcon(QIcon("data/history.png"))  
             history_list.addItem(item)
@@ -377,7 +418,7 @@ class Browser(QMainWindow):
         search_bar.textChanged.connect(filter_bookmarks)
 
         # Adding Bookmarks
-        for bookmark in self.bookmarks:
+        for bookmark in self.bookmarks[::-1]:
             item = QListWidgetItem(bookmark)
             item.setIcon(QIcon("data/bookmark1.png"))  
             bookmarks_list.addItem(item)
@@ -491,7 +532,7 @@ class Browser(QMainWindow):
 
         # Input field for URL
         url_input = QLineEdit()
-        url_input.setPlaceholderText("https://example.com")
+        url_input.setPlaceholderText("https://www.github.com/bayazid-bit/")
         layout.addWidget(url_input)
 
         # Buttons layout
@@ -593,8 +634,12 @@ class Browser(QMainWindow):
             self.url_bar.setText(current_tab.url().toString())
 
     def close_current_tab(self, index):
-        """ Close the current tab """
-        self.tabs.removeTab(index)
+        """ Close the current tab and clean up resources """
+        widget = self.tabs.widget(index)  # Get the widget (QWebEngineView) in the tab
+        if widget:
+            widget.deleteLater()  # Delete the widget to release resources
+        self.tabs.removeTab(index)  # Remove the tab from the tab bar
+
 
     def navigate_home(self):
         """ Navigate to the homepage (Google in this case) """
